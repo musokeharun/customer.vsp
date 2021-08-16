@@ -1,25 +1,25 @@
-interface SmsHandler {
-    contacts: string
-    message: string
-    sender: string
+import axios from "axios";
 
-    send(): string
+export interface SmsHandler {
+  contacts: string;
+  message: string;
+  sender: string;
+
+  send(): Promise<any>;
 }
 
-class CaltonHandler implements SmsHandler {
-    contacts: string;
-    message: string;
-    sender: string;
+export class CaltonHandler implements SmsHandler {
+  contacts: string;
+  message: string;
+  sender: string;
 
-    constructor(contacts: string, message: string, sender: string) {
-        this.contacts = contacts;
-        this.sender = sender;
-        this.message = message;
-    }
+  constructor(contacts: string, message: string, sender: string) {
+    this.contacts = contacts;
+    this.message = message;
+    this.sender = sender;
+  }
 
-
-    send(): string {
-        return "";
-    }
-
+  send(): Promise<any> {
+    return axios.get("http://caltonmobile.com/calton/api.php");
+  }
 }

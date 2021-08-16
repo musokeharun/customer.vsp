@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { Request, Response, Router } from 'express';
+import { Request, Response} from 'express';
 import StatusCodes from 'http-status-codes';
 
 import UserDao from '@daos/User/UserDao.mock';
@@ -9,7 +9,6 @@ import { paramMissingError, loginFailedErr, cookieProps } from '@shared/constant
 const userDao = new UserDao();
 const jwtService = new JwtService();
 const { BAD_REQUEST, OK, UNAUTHORIZED } = StatusCodes;
-
 
 /**
  * Login in a user.
@@ -60,9 +59,8 @@ export async function login(req: Request, res: Response) {
  * @param res 
  * @returns 
  */
-export async function logout(req: Request, res: Response) {
+export function logout(req: Request, res: Response) {
     const { key, options } = cookieProps;
     res.clearCookie(key, options);
     return res.status(OK).end();
 }
-

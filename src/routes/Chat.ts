@@ -25,7 +25,7 @@ export async function connectSocketRm(req: Request, res: Response) {
     socket.leave(SOCKET_ROOM_NAME);
     socket.join(SOCKET_ROOM_NAME)
     // Return
-    return res.status(OK).end();
+    res.status(OK).end();
 }
 
 

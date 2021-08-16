@@ -12,6 +12,8 @@ declare module 'express' {
             socketId: string;
             deviceId: string;
             device: string;
+            contact : string;
+            code : string;
         };
     }
 }
