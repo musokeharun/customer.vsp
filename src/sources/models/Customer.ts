@@ -17,6 +17,7 @@ export const addCustomer = async (
   customer.set("isVerified", false);
   customer.set("network", getNetworkType(contact));
   customer.set("code", code);
+  customer.set("isActive", true);
   return customer.save();
 };
 

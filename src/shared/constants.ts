@@ -24,7 +24,6 @@ export const welcomeMessage = "Welcome to VSP";
 
 export const SENDER_NAME = "VSP Media";
 
-export const usernameOrPasswordIsIncorrect =
-  "Username or password is incorrect.";
+export const usernameOrPasswordIsIncorrect = "VSP Id or password is incorrect.";
 
 export const checkSmsCode = "Code has been sent to your inbox @ ";

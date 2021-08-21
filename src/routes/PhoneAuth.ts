@@ -16,8 +16,15 @@ import {
 import { EmailHandler } from "src/sources/implementaions/Email";
 import ParseServer from "src/sources/implementaions/ParseServer";
 import { CaltonHandler, SmsHandler } from "src/sources/implementaions/Sms";
+import logger from "@shared/Logger";
+import { addDevice } from "src/sources/models/UserDevice";
+import { decrypt } from "@shared/encrypt";
+import { JwtService } from "@shared/JwtService";
 
-const { NOT_FOUND, CREATED, FORBIDDEN } = StatusCodes;
+const { NOT_FOUND, CREATED, FORBIDDEN, OK } = StatusCodes;
+
+let customerQuery = new ParseServer.Query(Customer);
+const jwtService = new JwtService();
 
 export const loginPhone = async (req: Request, res: Response) => {
   const { contact, password, email, device } = req.body;
@@ -32,16 +39,76 @@ export const loginPhone = async (req: Request, res: Response) => {
   }).xor("contact", "email");
 
   if (!(await validate(schema, { contact, email, password }))) {
-    res.json({ msg: "Email or password is incorrect." }).end();
+    res.json({ msg: "Vsp Id or password is incorrect." }).end();
     return;
   }
 
   //todo check for user existence
-  const customer_Object = new Customer();
+  customerQuery.equalTo("contact", contact);
+  const customerFound = await customerQuery.first();
+  logger.info(customerFound?.toJSON(), true);
+  if (!customerFound) {
+    res.status(NOT_FOUND).send({
+      err: "Could not authenticate account,User not found.",
+    });
+    return;
+  }
+
+  if (!customerFound.get("isVerified") || !customerFound.get("isActive")) {
+    res.status(FORBIDDEN).send({
+      err: "Could not authenticate,User not validated.",
+    });
+    return;
+  }
+
+  if (!decrypt(password, customerFound.get("password"))) {
+    res.status(FORBIDDEN).send({
+      err: "Could not authenticate,Password incorreect.",
+    });
+    return;
+  }
 
   //todo add devices to used devices
+  const { brandName, osName, osVersion, modelName } = device || {};
+  let deviceUsed = await addDevice(
+    customerFound.get("id"),
+    brandName || "N/A",
+    modelName || "N/A",
+    osName || "N/A",
+    osVersion || "N/A"
+  );
+
+  let token = new Date().getTime();
+  let tokenstring = await jwtService.getJwt({
+    contact: customerFound.get("contact"),
+    email: customerFound.get("email"),
+    deviceId: deviceUsed.id,
+    token,
+  });
 
   //todo return devices_id
+  res
+    .status(OK)
+    .json({
+      msg: "User authenticated,Log in success.",
+      meta: {
+        deviceId: deviceUsed.id,
+        token: tokenstring,
+      },
+    })
+    .end();
+
+  new Promise(() => {
+    customerFound.set("token", token);
+    customerFound.save();
+  })
+    .then(() => {
+      logger.info("User Token Set");
+    })
+    .catch(() => {
+      logger.info("User Token Error");
+    });
+  return;
 };
 
 export const registerPhone = async (req: Request, res: Response) => {
@@ -67,8 +134,6 @@ export const registerPhone = async (req: Request, res: Response) => {
 
   // todo register customer device
   let customerObject;
-  let customerQuery = new ParseServer.Query(Customer);
-
   //todo return code in sms || email link
   if (contact) {
     //CHECK EXISTANCE
@@ -78,6 +143,19 @@ export const registerPhone = async (req: Request, res: Response) => {
     customerObject = await customerQuery.first();
     if (!customerObject)
       customerObject = await addCustomer(email, contact, password, code);
+    else {
+      if (customerObject.get("isVerified")) {
+        //TODO App Log Already  Registered
+        return res.status(FORBIDDEN).send({
+          err: "User already registered",
+        });
+      } else if (!customerObject.get("isActive")) {
+        //TODO App Log User Not Allowed
+        return res.status(FORBIDDEN).send({
+          err: "User forbidden",
+        });
+      }
+    }
 
     let smsHandler = new CaltonHandler(
       customerObject.get("contact"),
@@ -85,12 +163,24 @@ export const registerPhone = async (req: Request, res: Response) => {
       SENDER_NAME
     );
 
-    let { data: result } = await sendToPhone(smsHandler);
-    console.log("Sent to Phone", result);
+    try {
+      let result = await sendToPhone(smsHandler);
+      console.log("Sent to Phone", result);
 
-    res.status(CREATED).json({
-      msg: checkSmsCode + contact,
-    });
+      //FIXME
+      // TODO
+      // if (!result.sent) {  res.status( INTERNAL_SERVER_ERROR ).json({err : "Could not deliver the code to your inbox, try again later."}) }
+
+      res.status(CREATED).json({
+        msg: checkSmsCode + contact,
+      });
+    } catch (err) {
+      logger.err(err);
+
+      res.status(NOT_FOUND).json({
+        err: "Could not deliver the code to your inbox, try again later",
+      });
+    }
   } else if (email) {
     customerQuery.equalTo("email", email);
     customerObject = await customerQuery.first();
@@ -111,8 +201,10 @@ export const registerPhone = async (req: Request, res: Response) => {
   }
 };
 
-const sendToPhone = (smsHandler: SmsHandler) => {
-  return smsHandler.send();
+const subscribeFreePackage = () => {};
+
+const sendToPhone = async (smsHandler: SmsHandler) => {
+  return await smsHandler.send();
 };
 
 const sendToEmail = (emailHandler: EmailHandler) => {
@@ -128,19 +220,31 @@ export const verifyPhone = async (req: Request, res: Response) => {
   });
 
   if (!(await validate(schema, { code, contact }))) {
-    res.send();
+    res.status(NOT_FOUND).send({
+      err: "Could not validate account.",
+    });
+    return;
   }
 
   let customerQuery = new ParseServer.Query(Customer);
   customerQuery.equalTo("contact", contact);
-  customerQuery.equalTo("code", code);
 
   let customerFound = await customerQuery.first();
   if (!customerFound) {
     res
       .status(NOT_FOUND)
       .json({
-        err: "No such user found",
+        err: "Could not validate sush account,No such user found",
+      })
+      .end();
+    return;
+  }
+
+  if (customerFound.get("code").toString().trim() !== code.toString().trim()) {
+    res
+      .status(FORBIDDEN)
+      .json({
+        err: "Could not validate account,Code is incorrect.",
       })
       .end();
     return;
@@ -150,14 +254,14 @@ export const verifyPhone = async (req: Request, res: Response) => {
     res
       .status(FORBIDDEN)
       .json({
-        err: "User is already verified,Please login",
+        err: "Could not validate account,User is already verified,Please login",
       })
       .end();
     return;
   }
 
   // todo verify user
-  let verifiedUser = await customerFound.save({
+  await customerFound.save({
     isVerified: true,
     verfiedAt: new Date(),
   });
@@ -169,6 +273,9 @@ export const verifyPhone = async (req: Request, res: Response) => {
       msg: "Explore VSP Media App and experience the World's Entertainment in one place",
     })
     .end();
+
+  //  TODO SUSCRIBE FREE PACKAGE
+  subscribeFreePackage();
 };
 
 export const changePassword = (req: Request, res: Response) => {};

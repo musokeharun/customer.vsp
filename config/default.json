@@ -1,0 +1,13 @@
+{
+  "Auth": {},
+  "Calton": {
+    "username": "",
+    "password": "",
+    "sender": ""
+  },
+
+  "Jwt": {
+    "secret": "vsp-media-app",
+    "expires": "0"
+  }
+}

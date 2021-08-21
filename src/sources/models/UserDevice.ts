@@ -1,41 +1,41 @@
 import ParseServer from "../implementaions/ParseServer";
 
-class UserDevice extends ParseServer.Object {
+export const UserDevice = ParseServer.Object.extend("UserDevice");
+export const VSPExpoDevice = ParseServer.Object.extend("VSPExpoDevice");
 
-    private isAdded: boolean = false;
+// FIXME ON LOGIN || REGISTER
+export const addDevice = async (
+  userId: string,
+  brandName: string,
+  modelName: string,
+  osName: string,
+  osVersion: string
+): Promise<typeof UserDevice> => {
+  let query = new ParseServer.Query(UserDevice);
+  query.equalTo("userId", userId);
+  let devicesList = await query.find();
+  let exists = devicesList.find(
+    (dbDevice) =>
+      dbDevice.get("brandName") === brandName &&
+      dbDevice.get("modelName") === modelName &&
+      dbDevice.get("osName") == osName &&
+      dbDevice.get("osVersion") === osVersion
+  );
 
-    constructor() {
-        super('UserDevice');
-    }
+  if (exists) {
+    exists.set("lastLoggedIn", new Date());
+    return exists.save();
+  }
 
-    // NOTE ON LOGIN || REGISTER
-    async addDevice(userId: string, brandName: string, modelName: string, osName: string, osVersion: string): Promise<UserDevice> {
+  let createdDevice = new UserDevice();
+  return createdDevice.save({
+    userId,
+    brandName,
+    osName,
+    modelName,
+    osVersion,
+    lastLoggedIn: new Date(),
+  });
+};
 
-        let query = new ParseServer.Query(UserDevice);
-        query.equalTo("userId", userId);
-        let devicesList = await query.find();
-        let exists = devicesList.find(
-            (dbDevice) =>
-                dbDevice.get("brandName") === brandName && dbDevice.get("modelName") === modelName
-                && dbDevice.get("osName") == osName && dbDevice.get("osVersion") === osVersion
-        );
-
-        if (exists) {
-            exists.set("lastLoggedIn", new Date());
-            return exists.save();
-        }
-
-        return this.save({
-            userId,
-            brandName,
-            osName,
-            modelName,
-            osVersion,
-            lastLoggedIn: new Date()
-        })
-    }
-
-}
-
-ParseServer.Object.registerSubclass('UserDevice', UserDevice);
 export default UserDevice;

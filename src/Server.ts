@@ -14,6 +14,7 @@ import BaseRouter from './routes';
 import logger from '@shared/Logger';
 import {cookieProps} from '@shared/constants';
 
+
 const app = express();
 const {BAD_REQUEST} = StatusCodes;
 

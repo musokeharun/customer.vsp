@@ -19,7 +19,7 @@ export const getCodeRandom = (length: number = 5) => {
 };
 
 export const getSmsCodeString = (code: string | number) =>
-  `Your VSP Code to confirm your registeration is ${code}.`;
+  `${code} is your verification code for VSP Media App.`;
 
 export const createEmailLink = (email: string, code: string | number) => {
   return "";

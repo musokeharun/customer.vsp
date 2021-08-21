@@ -2,13 +2,13 @@ import { Request, Response } from "express";
 import {
   LogAction,
   LogType,
-  VSPExpoDevice,
   VSPLog,
 } from "../sources/implementaions/ParseServer";
 import { ExpoDevice } from "@entities/Device";
 import { StatusCodes } from "http-status-codes";
 import { welcomeMessage } from "@shared/constants";
 import logger from "@shared/Logger";
+import { VSPExpoDevice } from "src/sources/models/UserDevice";
 
 export const logDevice = async (req: Request, res: Response) => {
   const { device, deviceId } = req.body;
