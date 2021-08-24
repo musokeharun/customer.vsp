@@ -5,6 +5,7 @@ import { getAllUsers, addOneUser, updateOneUser, deleteOneUser } from "./Users";
 import { connectSocketRm, emitMessage } from "./Chat";
 import { logDevice } from "./SplashScreen";
 import { loginPhone, registerPhone, verifyPhone } from "./PhoneAuth";
+import admin from "src/admin";
 
 // Auth router
 const authRouter = Router();
@@ -41,5 +42,6 @@ baseRouter.use("/chat", authMw, chatRouter);
 
 //APP DATA
 baseRouter.use("/splash", splashRouter);
+baseRouter.use("/admin", admin);
 
 export default baseRouter;

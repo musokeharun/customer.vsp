@@ -13,6 +13,11 @@ declare module "express" {
       device: any;
       contact: string;
       code: string;
+      name: string;
+      email: string;
+      desc: string;
+      image: string;
+      isActive: string;
     };
   }
 }
